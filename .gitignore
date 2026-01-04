@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# PM2 files
+.pm2/
+
+# Logs
+logs/*.log
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+nul
+*.tmp
+*.bak
+
+# Tunnel logs
+tunnel_*.log

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erablue Web Terminal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <style>
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; background: #0d1117; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 320px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; border-bottom: 1px solid #30363d; }
+        .sidebar-header h2 { margin: 0 0 10px 0; color: #58a6ff; font-size: 16px; }
+        .new-btn { width: 100%; padding: 10px; background: #238636; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .new-btn:hover { background: #2ea043; }
+        .session-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .session-item { padding: 12px; background: #0d1117; border-radius: 6px; margin-bottom: 8px; cursor: pointer; border: 1px solid #30363d; transition: all 0.2s; }
+        .session-item:hover { border-color: #58a6ff; background: #161b22; }
+        .session-name { color: #c9d1d9; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+        .session-info { color: #8b949e; font-size: 11px; }
+        .main { flex: 1; display: flex; flex-direction: column; }
+        .toolbar { height: 40px; background: #161b22; display: flex; align-items: center; padding: 0 15px; gap: 10px; border-bottom: 1px solid #30363d; }
+        .toolbar button { padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .toolbar button:hover { background: #2ea043; }
+        .toolbar span { color: #8b949e; font-size: 12px; }
+        #terminal { flex: 1; }
+        .loading { padding: 20px; text-align: center; color: #8b949e; }
+        .empty { padding: 40px; text-align: center; color: #8b949e; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background: #3fb950; }
+        .status-offline { background: #f85149; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #161b22; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        .modal-header { padding: 20px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { margin: 0; color: #c9d1d9; font-size: 18px; }
+        .modal-close { background: none; border: none; color: #8b949e; font-size: 24px; cursor: pointer; }
+        .modal-close:hover { color: #c9d1d9; }
+        .modal-body { padding: 20px; max-height: 400px; overflow-y: auto; }
+        .modal-footer { padding: 20px; border-top: 1px solid #30363d; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .modal-btn-primary { background: #238636; color: white; }
+        .modal-btn-primary:hover { background: #2ea043; }
+        .modal-btn-secondary { background: #30363d; color: #c9d1d9; }
+        .modal-btn-secondary:hover { background: #3d444d; }
+
+        /* Directory Browser */
+        .dir-path { padding: 10px; background: #0d1117; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+        .dir-path input { flex: 1; padding: 8px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #c9d1d9; font-size: 13px; }
+        .dir-path input:focus { outline: none; border-color: #58a6ff; }
+        .dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+        .dir-item { padding: 10px; background: #0d1117; border-radius: 6px; cursor: pointer; border: 1px solid #30363d; transition: all 0.2s; }
+        .dir-item:hover { border-color: #58a6ff; background: #161b22; }
+        .dir-name { color: #c9d1d9; font-size: 13px; }
+        .dir-info { color: #8b949e; font-size: 11px; margin-top: 4px; }
+
+        /* Profile Selection */
+        .profile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .profile-item { padding: 15px; background: #0d1117; border-radius: 8px; cursor: pointer; border: 2px solid #30363d; transition: all 0.2s; text-align: center; }
+        .profile-item:hover { border-color: #58a6ff; }
+        .profile-item.selected { border-color: #238636; background: #0d2d16; }
+        .profile-icon { font-size: 24px; margin-bottom: 8px; }
+        .profile-name { color: #c9d1d9; font-size: 14px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🤖 Claude Sessions</h2>
+                <button class="new-btn" onclick="openNewTerminalModal()">+ New Terminal</button>
+                <button class="new-btn" onclick="loadSessions()" style="margin-top: 8px; background: #1f6feb;">🔄 Refresh</button>
+            </div>
+            <div class="session-list" id="sessionList">
+                <div class="loading">Loading sessions...</div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="toolbar">
+                <span class="status-dot status-offline" id="statusDot"></span>
+                <span id="status">Connecting...</span>
+                <span style="margin-left: auto; color: #58a6ff;" id="currentSession"></span>
+                <button onclick="copyTerminal()">📋 Copy</button>
+                <button onclick="openNewTerminalModal()">🔄 New</button>
+            </div>
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <!-- Directory & Profile Selection Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">📁 Select Project Directory</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be dynamically loaded -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let term = null;
+        let fitAddon = null;
+        let currentModalStep = 'directory'; // 'directory' or 'profile'
+        let selectedDirectory = null;
+        let selectedProfile = null;
+        let pendingSessionId = null;
+
+        // Profiles
+        const PROFILES = [
+            { id: 'claude', name: 'Claude', icon: '🤖', command: 'ccs --dangerously-skip-permissions' },
+            { id: 'agy', name: 'Agy', icon: '🧠', command: 'ccs agy --dangerously-skip-permissions' },
+            { id: 'glm', name: 'GLM', icon: '🧬', command: 'ccs glm --dangerously-skip-permissions' },
+            { id: 'codex', name: 'Codex', icon: '📜', command: 'ccs codex --dangerously-skip-permissions' }
+        ];
+
+        // Initialize xterm FIRST
+        function initTerminal() {
+            term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#0d1117',
+                    foreground: '#c9d1d9'
+                },
+                fontFamily: 'Consolas, "Courier New", monospace',
+                fontSize: 14
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+                if (socket) {
+                    socket.emit('resize', { cols: term.cols, rows: term.rows });
+                }
+            });
+
+            term.onData((data) => {
+                if (socket) {
+                    socket.emit('input', data);
+                }
+            });
+        }
+
+        // Connect socket
+        function connectSocket() {
+            socket = io({
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+
+            socket.on('connect', () => {
+                console.log('Socket connected');
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('statusDot').className = 'status-dot status-online';
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Socket disconnected');
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('statusDot').className = 'status-dot status-offline';
+            });
+
+            socket.on('output', (data) => {
+                if (term) term.write(data);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket error:', error);
+            });
+        }
+
+        // Modal functions
+        function openModal(title, body, footer) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = body;
+            document.getElementById('modalFooter').innerHTML = footer;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            selectedDirectory = null;
+            selectedProfile = null;
+            pendingSessionId = null;
+        }
+
+        // Directory selection
+        async function loadDirectory(path = null) {
+            const url = path ? `/api/files?path=${encodeURIComponent(path)}` : '/api/files';
+            const response = await fetch(url);
+            const data = await response.json();
+            return data;
+        }
+
+        function renderDirectoryBrowser(data) {
+            const path = data.currentPath;
+            const folders = data.folders || [];
+
+            let html = `
+                <div class="dir-path">
+                    <input type="text" id="dirPathInput" value="${path}" readonly>
+                    <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('')">💿 Drives</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('${path.replace(/\\/g, '/')}/../')">⬆️ Up</button>
+                </div>
+                <div class="dir-grid">
+            `;
+
+            folders.forEach(folder => {
+                html += `
+                    <div class="dir-item" onclick="loadAndRenderDirectory('${folder.path.replace(/\\/g, '/')}')">
+                        <div class="dir-name">📁 ${folder.name}</div>
+                        <div class="dir-info">${folder.path.split('/').pop()}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        async function loadAndRenderDirectory(path) {
+            selectedDirectory = path;
+            const data = await loadDirectory(path);
+            renderDirectoryBrowser(data);
+        }
+
+        function renderDirectoryBrowser(data) {
+            const path = data.currentPath;
+            const folders = data.folders || [];
+
+            let html = `
+                <div class="dir-path">
+                    <input type="text" id="dirPathInput" value="${path}" readonly>
+                    <button class="modal-btn modal-btn-secondary" data-action="drives">💿 Drives</button>
+                    <button class="modal-btn modal-btn-secondary" data-action="up" data-path="${path.replace(/\\/g, '/')}/../">⬆️ Up</button>
+                </div>
+                <div class="dir-grid">
+            `;
+
+            folders.forEach(folder => {
+                html += `
+                    <div class="dir-item" data-action="browse" data-path="${folder.path.replace(/\\/g, '/')}">
+                        <div class="dir-name">📁 ${folder.name}</div>
+                        <div class="dir-info">${folder.path.split('/').pop()}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            const footer = `
+                <button class="modal-btn modal-btn-secondary" data-action="close">Cancel</button>
+                <button class="modal-btn modal-btn-primary" data-action="select">Select This Folder</button>
+            `;
+
+            openModal('📁 Select Project Directory', html, footer);
+
+            // Attach event listeners after rendering
+            setTimeout(() => {
+                document.querySelectorAll('[data-action]').forEach(el => {
+                    el.addEventListener('click', handleDirectoryAction);
+                });
+            }, 10);
+        }
+
+        function handleDirectoryAction(e) {
+            const action = e.currentTarget.dataset.action;
+            const path = e.currentTarget.dataset.path;
+
+            console.log('Directory action:', action, path);
+
+            switch(action) {
+                case 'close':
+                    closeModal();
+                    break;
+                case 'select':
+                    selectDirectory();
+                    break;
+                case 'drives':
+                    loadAndRenderDirectory('');
+                    break;
+                case 'up':
+                    if (path) loadAndRenderDirectory(path);
+                    break;
+                case 'browse':
+                    if (path) loadAndRenderDirectory(path);
+                    break;
+            }
+        }
+
+        function selectDirectory() {
+            console.log('selectDirectory called, selectedDirectory:', selectedDirectory);
+            if (!selectedDirectory) return;
+            showProfileSelection();
+        }
+
+        // Profile selection
+        function showProfileSelection() {
+            currentModalStep = 'profile';
+            let html = '<div class="profile-grid">';
+            PROFILES.forEach(p => {
+                html += `
+                    <div class="profile-item" id="profile-${p.id}" onclick="selectProfile('${p.id}')">
+                        <div class="profile-icon">${p.icon}</div>
+                        <div class="profile-name">${p.name}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            const footer = `
+                <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('${selectedDirectory.replace(/\\/g, '/')}')">⬅️ Back</button>
+                <button class="modal-btn modal-btn-primary" onclick="confirmSelection()">Confirm</button>
+            `;
+            openModal('🎯 Select AI Profile', html, footer);
+        }
+
+        function selectProfile(profileId) {
+            console.log('selectProfile:', profileId);
+            selectedProfile = profileId;
+            document.querySelectorAll('.profile-item').forEach(el => el.classList.remove('selected'));
+            document.getElementById('profile-' + profileId).classList.add('selected');
+        }
+
+        function confirmSelection() {
+            console.log('confirmSelection', selectedDirectory, selectedProfile, pendingSessionId);
+            if (!selectedDirectory || !selectedProfile) {
+                alert('Please select both directory and profile');
+                return;
+            }
+
+            // Spawn FIRST, then close modal (to avoid variables being reset)
+            spawnTerminalWithConfig(selectedDirectory, selectedProfile, pendingSessionId);
+
+            // Close modal after spawning (but don't reset variables anymore)
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // New Terminal flow
+        function openNewTerminalModal() {
+            pendingSessionId = null;
+            currentModalStep = 'directory';
+            loadAndRenderDirectory(null);
+        }
+
+        // Resume session flow
+        async function resumeSession(sessionId) {
+            console.log('resumeSession called:', sessionId);
+            pendingSessionId = sessionId;
+
+            // Find session data to get cwd/project
+            const response = await fetch('/api/history');
+            const sessions = await response.json();
+            const session = sessions.find(s => s.sessionId === sessionId);
+
+            console.log('Session data:', session);
+
+            // Use cwd if available, otherwise fall back to project
+            const directory = session?.cwd || session?.project;
+            console.log('Using directory:', directory);
+
+            if (directory && directory !== 'N/A') {
+                selectedDirectory = directory;
+                showProfileSelection();
+            } else {
+                openNewTerminalModal();
+            }
+        }
+
+        // Spawn terminal
+        function spawnTerminalWithConfig(cwd, profileId, sessionId = null) {
+            console.log('spawnTerminalWithConfig:', { cwd, profileId, sessionId });
+
+            if (!socket || !socket.connected) {
+                alert('Not connected to server');
+                return;
+            }
+
+            const profile = PROFILES.find(p => p.id === profileId);
+            if (!profile) {
+                console.error('Profile not found:', profileId);
+                return;
+            }
+
+            const options = {
+                cols: term.cols,
+                rows: term.rows,
+                cwd: cwd,
+                ccsCommand: profile.command
+            };
+
+            if (sessionId) {
+                options.resumeSessionId = sessionId;
+                document.getElementById('currentSession').textContent = `📺 ${sessionId.substring(0, 8)} - ${profile.name}`;
+            } else {
+                document.getElementById('currentSession').textContent = `New - ${profile.name}`;
+            }
+
+            console.log('Emitting spawn:', options);
+            term.clear();
+            socket.emit('spawn', options);
+        }
+
+        // Copy terminal
+        function copyTerminal() {
+            if (!term) return;
+            const selection = term.getSelection();
+            if (selection) {
+                navigator.clipboard.writeText(selection);
+            } else {
+                term.selectAll();
+                setTimeout(() => {
+                    const allText = term.getSelection();
+                    navigator.clipboard.writeText(allText);
+                    term.clearSelection();
+                }, 100);
+            }
+        }
+
+        // Load sessions
+        async function loadSessions() {
+            const listDiv = document.getElementById('sessionList');
+            listDiv.innerHTML = '<div class="loading">Loading sessions...</div>';
+
+            try {
+                const response = await fetch('/api/history');
+                const sessions = await response.json();
+
+                if (sessions.length === 0) {
+                    listDiv.innerHTML = '<div class="empty">No sessions found</div>';
+                    return;
+                }
+
+                listDiv.innerHTML = sessions.map(s => `
+                    <div class="session-item" onclick="resumeSession('${s.sessionId}')">
+                        <div class="session-name">📺 ${s.display || s.sessionId.substring(0, 8)}</div>
+                        <div class="session-info">
+                            ${s.project || s.cwd || 'N/A'}<br>
+                            ${new Date(s.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                listDiv.innerHTML = '<div class="empty">Failed to load sessions</div>';
+            }
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            initTerminal();
+            connectSocket();
+            loadSessions();
+            setInterval(loadSessions, 30000);
+        });
+    </script>
+</body>
+</html>
