@@ -1,127 +1,128 @@
 # Web Terminal 🖥️
 
-Web Terminal cho phép bạn sử dụng terminal/command line qua trình duyệt web, rất tiện cho việc sử dụng trên điện thoại hoặc chia sẻ với bạn bè.
+Terminal trên trình duyệt web với tích hợp Claude Code Sessions. Truy cập terminal từ điện thoại, tablet hoặc bất kỳ thiết bị nào.
 
 ## ✨ Tính Năng
 
-- ✅ Terminal đầy đủ tính năng trên web
-- ✅ Truy cập từ điện thoại/tablet
-- ✅ Chia sẻ qua mạng LAN
-- ✅ File explorer tích hợp
-- ✅ Tự động chạy khi Windows khởi động
-- ✅ Tự động restart nếu crash
+- 🖥️ Terminal đầy đủ tính năng trên web (xterm.js)
+- 🤖 Tích hợp Claude Code Sessions - resume session dễ dàng
+- 🎯 Hỗ trợ nhiều AI Profiles: Claude, Agy, GLM, Codex
+- 📁 Directory picker - chọn thư mục làm việc
+- 📱 Truy cập từ điện thoại/tablet qua mạng LAN
+- 🔄 Tự động chạy với Windows (PM2 Service)
+- ⚡ Không cần đăng nhập - mở là dùng
 
-## 🚀 Cài Đặt Siêu Nhanh - 1 CLICK!
+## 🚀 Cài Đặt
 
 ### Yêu Cầu
-- [Node.js](https://nodejs.org) (v18+)
+- [Node.js](https://nodejs.org) v18+
+- [Git](https://git-scm.com) (cho Git Bash)
 - Windows với quyền Administrator
 
-### 1 Click Setup (Khuyến Nghị)
-1. **Double-click** vào `WEB-TERMINAL.bat`
-2. Chọn **[1]** - Cài đặt và khởi động
-3. Truy cập: http://localhost:9000
-
-**Xong! Chỉ 1 file duy nhất! 🎉**
-
-### Cách Thủ Công (Nếu Cần)
+### 1 Click Setup
 ```bash
-# 1. Clone repo
+# Clone repo
 git clone https://github.com/TUAN130294/webterminal.git
 cd webterminal
 
-# 2. Cài dependencies
+# Cài dependencies
 npm install
-
-# 3. Cài PM2
-npm install -g pm2 pm2-windows-startup
-
-# 4. Chạy với PM2
-pm2 start ecosystem.config.js
-
-# 5. Cài Windows Service
-pm2-startup install
-pm2 save
-
-# 6. Truy cập: http://localhost:9000
 ```
+
+Sau đó chạy **MANAGER.bat** → Bấm **1**
+
+## 🛠️ Quản Lý - MANAGER.bat
+
+```
+===== WEB TERMINAL MANAGER =====
+
+  1. Cài đặt và khởi động (PM2)
+  2. Khởi động
+  3. Dừng
+  4. Khởi động lại
+  5. Xem trạng thái
+  6. Xem logs
+  7. Cài Windows Service
+  0. Thoát
+```
+
+### Cài Windows Service (Tự động chạy khi boot)
+1. Chạy **MANAGER.bat** as Administrator
+2. Bấm **7** - Cài Windows Service
+3. PM2 sẽ tự khởi động cùng Windows
+
+## 💻 Sử Dụng
+
+1. Truy cập: **http://localhost:9000**
+2. Sidebar trái hiển thị Claude Sessions
+3. Bấm **+ New Terminal** hoặc click session để resume
+4. Chọn thư mục → Chọn AI Profile → Confirm
+
+### AI Profiles
+| Profile | Mô tả |
+|---------|-------|
+| 🤖 Claude | Claude Code mặc định |
+| 🧠 Agy | Antigravity mode |
+| 🧬 GLM | GLM mode |
+| 📜 Codex | Codex mode |
+| 💻 Bash Only | Terminal thuần, không AI |
 
 ## 📱 Truy Cập Từ Điện Thoại
 
-1. **Tìm IP máy tính:**
-   ```bash
-   ipconfig
-   ```
-   Tìm "IPv4 Address" (ví dụ: 192.168.1.100)
+1. Tìm IP máy tính: `ipconfig`
+2. Kết nối cùng WiFi
+3. Truy cập: `http://<IP>:9000`
 
-2. **Truy cập từ điện thoại:**
-   - Kết nối cùng WiFi với máy tính
-   - Mở trình duyệt: `http://192.168.1.100:9000`
-
-## 🛠️ Quản Lý
-
-### Web Terminal Manager (Khuyến Nghị)
-Chạy `WEB-TERMINAL.bat`:
-- **[1]** 🚀 Cài đặt và khởi động (1 Click)
-- **[2]** ▶️ Khởi động
-- **[3]** ⏹️ Dừng
-- **[4]** 🔄 Khởi động lại
-- **[5]** 📊 Xem trạng thái
-- **[6]** 📝 Xem logs
-- **[7]** 🛠️ Cài Windows Service
-- **[9]** 🧹 Dọn dẹp hoàn toàn
-
-### Lệnh PM2 Cơ Bản
-```bash
-pm2 list                    # Xem trạng thái
-pm2 stop web-terminal       # Dừng
-pm2 start web-terminal      # Khởi động
-pm2 restart web-terminal    # Khởi động lại
-pm2 logs web-terminal       # Xem logs
-```
-
-## 📁 Cấu Trúc Project (Đã Dọn Dẹp)
+## 📁 Cấu Trúc
 
 ```
 webterminal/
-├── server.js                      # Server chính
-├── ecosystem.config.js            # Config PM2
-├── package.json                   # Dependencies
-├── public/index.html              # Giao diện web
-├── logs/                          # Thư mục logs
-├── WEB-TERMINAL.bat               # 🚀 FILE DUY NHẤT CẦN DÙNG
-└── README.md                      # Hướng dẫn này
+├── server.js              # Express + Socket.IO server
+├── ecosystem.config.js    # PM2 config
+├── package.json
+├── public/
+│   └── index.html         # Frontend (xterm.js)
+├── logs/                   # PM2 logs
+├── MANAGER.bat            # 🚀 Quản lý chính
+└── CLAUDE.md              # Hướng dẫn cho Claude Code
 ```
 
-## 💡 Cách Sử Dụng Web Terminal
+## 🔧 Cấu Hình
 
-1. **Truy cập**: http://localhost:9000
-2. **Tạo Terminal**: Nhấn **"+ New Terminal"** (nút xanh)
-3. **Chọn thư mục**: Hoặc để mặc định
-4. **Nhấn**: **"Create Terminal"**
-5. **Sử dụng**: Gõ lệnh như terminal bình thường!
+### Đổi Port
+Sửa `ecosystem.config.js`:
+```javascript
+env: {
+    PORT: 9000  // Đổi port ở đây
+}
+```
+
+### Đổi User Profile Path
+Sửa `server.js` dòng 53:
+```javascript
+const ACTUAL_USER_HOME = 'C:\\Users\\YOUR_USERNAME';
+```
 
 ## ❌ Khắc Phục Sự Cố
 
 ### "No sessions found"
-1. Nhấn **"+ New Terminal"**
-2. Chọn **"Create Terminal"**
+- Bình thường nếu chưa có Claude history
+- Bấm **+ New Terminal** để tạo mới
 
-### Lỗi bất kỳ
-1. Chạy `WEB-TERMINAL-MANAGER.bat` as Administrator
-2. Chọn **[9]** - Dọn dẹp hoàn toàn
-3. Chọn **[1]** - 1 Click Setup lại
+### Terminal không hiển thị
+1. Kiểm tra PM2: `pm2 list`
+2. Xem logs: `pm2 logs web-terminal`
+3. Restart: `pm2 restart web-terminal`
 
-### Không truy cập được từ điện thoại
-1. Kiểm tra cùng mạng WiFi
-2. Tắt Windows Firewall tạm thời
-3. Kiểm tra IP đúng chưa: `ipconfig`
+### Lỗi khi chạy CCS
+- Đảm bảo Git đã cài và trong PATH
+- Kiểm tra `CLAUDE_CODE_GIT_BASH_PATH` trong server.js
 
-## ⚠️ Lưu Ý Bảo Mật
+## 🛡️ Bảo Mật
 
-- Chỉ chia sẻ với người tin tưởng
+- Chỉ sử dụng trong mạng LAN tin cậy
 - Không expose ra Internet công cộng
-- Sử dụng VPN khi cần thiết
+- Sử dụng VPN nếu cần truy cập từ xa
 
 ## 📄 License
 
@@ -129,6 +130,4 @@ MIT License
 
 ---
 
-**🎯 Mục tiêu: 1 Click là xong! Chạy `WEB-TERMINAL.bat` → [1] → Xong!**
-
-**Chúc bạn sử dụng vui vẻ! 🚀**
+**Chạy `MANAGER.bat` → Bấm 1 → Xong! 🚀**
