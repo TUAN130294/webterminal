@@ -9,7 +9,8 @@
         * { box-sizing: border-box; }
         body, html { margin: 0; padding: 0; height: 100%; background: #0d1117; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .container { display: flex; height: 100vh; }
-        .sidebar { width: 320px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; }
+        .sidebar { width: 320px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; transition: margin-left 0.3s ease; }
+        .sidebar.hidden { margin-left: -320px; }
         .sidebar-header { padding: 15px; border-bottom: 1px solid #30363d; }
         .sidebar-header h2 { margin: 0 0 10px 0; color: #58a6ff; font-size: 16px; }
         .new-btn { width: 100%; padding: 10px; background: #238636; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
@@ -80,11 +81,12 @@
         </div>
         <div class="main">
             <div class="toolbar">
+                <button onclick="toggleSidebar()" id="toggleBtn" title="Toggle Sessions">📋</button>
                 <span class="status-dot status-offline" id="statusDot"></span>
                 <span id="status">Connecting...</span>
                 <span style="margin-left: auto; color: #58a6ff;" id="currentSession"></span>
-                <button onclick="copyTerminal()">📋 Copy</button>
-                <button onclick="openNewTerminalModal()">🔄 New</button>
+                <button onclick="copyTerminal()">📄 Copy</button>
+                <button onclick="openNewTerminalModal()">➕ New</button>
             </div>
             <div id="terminal"></div>
         </div>
@@ -368,12 +370,30 @@
             }
         }
 
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const btn = document.getElementById('toggleBtn');
+            sidebar.classList.toggle('hidden');
+            const isHidden = sidebar.classList.contains('hidden');
+            btn.textContent = isHidden ? '☰' : '📋';
+            localStorage.setItem('sidebarHidden', isHidden);
+            // Refit terminal after animation
+            setTimeout(() => fitAddon.fit(), 350);
+        }
+
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
             initTerminal();
             connectSocket();
             loadSessions();
             setInterval(loadSessions, 30000);
+
+            // Restore sidebar state
+            if (localStorage.getItem('sidebarHidden') === 'true') {
+                document.querySelector('.sidebar').classList.add('hidden');
+                document.getElementById('toggleBtn').textContent = '☰';
+            }
         });
     </script>
 </body>
