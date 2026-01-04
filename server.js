@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
                 cols: options.cols || 80,
                 rows: options.rows || 30,
                 cwd: spawnCwd,
-                env: CLAUDE_ENV
+                env: CLAUDE_ENV,
+                useConpty: false  // Use WinPTY instead of ConPTY (fixes PM2 AttachConsole error)
             });
 
             ptyProcess.onData((data) => {

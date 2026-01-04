@@ -1,0 +1,142 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const pty = require('node-pty');
+const os = require('os');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Authentication via Socket.io handshake
+const AUTH_TOKEN = process.env.TERMINAL_TOKEN || 'erablue2026';
+
+// Session storage for persistent terminals (like tmux)
+const sessions = new Map();
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+// Serve static files with no-cache headers for HTML
+app.use(express.static('public', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
+
+// Terminal session with auth
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (token === AUTH_TOKEN) {
+        next();
+    } else {
+        next(new Error('Authentication error'));
+    }
+});
+
+io.on('connection', (socket) => {
+    const sessionId = socket.handshake.auth.sessionId || 'default';
+    console.log(`Client connected (authenticated), session: ${sessionId}`);
+
+    let session = sessions.get(sessionId);
+
+    // Create new session if doesn't exist
+    if (!session) {
+        console.log(`Creating new terminal session: ${sessionId}`);
+
+        const shell = os.platform() === 'win32' ? 'C:\\Users\\15931 - Backend\\AppData\\Local\\Programs\\Git\\usr\\bin\\bash.exe' : '/bin/sh';
+
+        const shellEnv = { ...process.env };
+        if (os.platform() === 'win32') {
+            shellEnv.CLAUDE_CODE_GIT_BASH_PATH = 'C:\\Users\\15931 - Backend\\AppData\\Local\\Programs\\Git\\usr\\bin\\bash.exe';
+        }
+
+        const ptyProcess = pty.spawn(shell, [], {
+            name: 'xterm-color',
+            cols: 80,
+            rows: 30,
+            cwd: process.cwd(),
+            env: shellEnv
+        });
+
+        session = {
+            ptyProcess,
+            lastActivity: Date.now(),
+            timeout: null,
+            buffer: '' // Store output for replay
+        };
+
+        // Buffer output for replay on reconnect
+        ptyProcess.on('data', (data) => {
+            session.buffer += data;
+            // Keep last 50KB only
+            if (session.buffer.length > 50000) {
+                session.buffer = session.buffer.slice(-50000);
+            }
+        });
+
+        sessions.set(sessionId, session);
+    } else {
+        console.log(`Reattaching to existing session: ${sessionId}`);
+
+        // Clear cleanup timeout
+        if (session.timeout) {
+            clearTimeout(session.timeout);
+            session.timeout = null;
+        }
+
+        // Replay buffered output to client
+        if (session.buffer) {
+            socket.emit('output', session.buffer);
+        }
+    }
+
+    const { ptyProcess } = session;
+    session.lastActivity = Date.now();
+
+    // Send PTY data to client
+    const dataHandler = (data) => {
+        socket.emit('output', data);
+    };
+    ptyProcess.on('data', dataHandler);
+
+    // Receive input from client
+    socket.on('input', (data) => {
+        session.lastActivity = Date.now();
+        ptyProcess.write(data);
+    });
+
+    // Resize
+    socket.on('resize', (size) => {
+        ptyProcess.resize(size.cols, size.rows);
+    });
+
+    // Detach on disconnect (don't kill)
+    socket.on('disconnect', () => {
+        console.log(`Client disconnected, session ${sessionId} will persist`);
+
+        // Remove this socket's data handler
+        ptyProcess.off('data', dataHandler);
+
+        // Set cleanup timeout
+        session.timeout = setTimeout(() => {
+            console.log(`Cleaning up inactive session: ${sessionId}`);
+            ptyProcess.kill();
+            sessions.delete(sessionId);
+        }, SESSION_TIMEOUT);
+    });
+
+    // Force kill session
+    socket.on('kill-session', () => {
+        console.log(`Force killing session: ${sessionId}`);
+        ptyProcess.kill();
+        sessions.delete(sessionId);
+    });
+});
+
+const PORT = process.env.PORT || 3003;
+server.listen(PORT, () => {
+    console.log(`Web Terminal running at http://localhost:${PORT}`);
+});
