@@ -113,7 +113,7 @@
         let socket = null;
         let term = null;
         let fitAddon = null;
-        let currentModalStep = 'directory'; // 'directory' or 'profile'
+        let currentModalStep = 'directory';
         let selectedDirectory = null;
         let selectedProfile = null;
         let pendingSessionId = null;
@@ -123,68 +123,50 @@
             { id: 'claude', name: 'Claude', icon: '🤖', command: 'ccs --dangerously-skip-permissions' },
             { id: 'agy', name: 'Agy', icon: '🧠', command: 'ccs agy --dangerously-skip-permissions' },
             { id: 'glm', name: 'GLM', icon: '🧬', command: 'ccs glm --dangerously-skip-permissions' },
-            { id: 'codex', name: 'Codex', icon: '📜', command: 'ccs codex --dangerously-skip-permissions' }
+            { id: 'codex', name: 'Codex', icon: '📜', command: 'ccs codex --dangerously-skip-permissions' },
+            { id: 'bash', name: 'Bash Only', icon: '💻', command: null }
         ];
 
-        // Initialize xterm FIRST
+        // Initialize xterm
         function initTerminal() {
             term = new Terminal({
                 cursorBlink: true,
-                theme: {
-                    background: '#0d1117',
-                    foreground: '#c9d1d9'
-                },
+                theme: { background: '#0d1117', foreground: '#c9d1d9' },
                 fontFamily: 'Consolas, "Courier New", monospace',
                 fontSize: 14
             });
 
             fitAddon = new FitAddon.FitAddon();
             term.loadAddon(fitAddon);
-
             term.open(document.getElementById('terminal'));
             fitAddon.fit();
 
             window.addEventListener('resize', () => {
                 fitAddon.fit();
-                if (socket) {
-                    socket.emit('resize', { cols: term.cols, rows: term.rows });
-                }
+                if (socket) socket.emit('resize', { cols: term.cols, rows: term.rows });
             });
 
             term.onData((data) => {
-                if (socket) {
-                    socket.emit('input', data);
-                }
+                if (socket) socket.emit('input', data);
             });
         }
 
         // Connect socket
         function connectSocket() {
-            socket = io({
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000
-            });
+            socket = io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
 
             socket.on('connect', () => {
-                console.log('Socket connected');
                 document.getElementById('status').textContent = 'Connected';
                 document.getElementById('statusDot').className = 'status-dot status-online';
             });
 
             socket.on('disconnect', () => {
-                console.log('Socket disconnected');
                 document.getElementById('status').textContent = 'Disconnected';
                 document.getElementById('statusDot').className = 'status-dot status-offline';
             });
 
-            socket.on('output', (data) => {
-                if (term) term.write(data);
-            });
-
-            socket.on('connect_error', (error) => {
-                console.error('Socket error:', error);
-            });
+            socket.on('output', (data) => { if (term) term.write(data); });
+            socket.on('connect_error', (error) => console.error('Socket error:', error));
         }
 
         // Modal functions
@@ -206,39 +188,12 @@
         async function loadDirectory(path = null) {
             const url = path ? `/api/files?path=${encodeURIComponent(path)}` : '/api/files';
             const response = await fetch(url);
-            const data = await response.json();
-            return data;
-        }
-
-        function renderDirectoryBrowser(data) {
-            const path = data.currentPath;
-            const folders = data.folders || [];
-
-            let html = `
-                <div class="dir-path">
-                    <input type="text" id="dirPathInput" value="${path}" readonly>
-                    <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('')">💿 Drives</button>
-                    <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('${path.replace(/\\/g, '/')}/../')">⬆️ Up</button>
-                </div>
-                <div class="dir-grid">
-            `;
-
-            folders.forEach(folder => {
-                html += `
-                    <div class="dir-item" onclick="loadAndRenderDirectory('${folder.path.replace(/\\/g, '/')}')">
-                        <div class="dir-name">📁 ${folder.name}</div>
-                        <div class="dir-info">${folder.path.split('/').pop()}</div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            return html;
+            return await response.json();
         }
 
         async function loadAndRenderDirectory(path) {
-            selectedDirectory = path;
-            const data = await loadDirectory(path);
+            const data = await loadDirectory(path || null);
+            selectedDirectory = data.currentPath;
             renderDirectoryBrowser(data);
         }
 
@@ -249,17 +204,16 @@
             let html = `
                 <div class="dir-path">
                     <input type="text" id="dirPathInput" value="${path}" readonly>
-                    <button class="modal-btn modal-btn-secondary" data-action="drives">💿 Drives</button>
-                    <button class="modal-btn modal-btn-secondary" data-action="up" data-path="${path.replace(/\\/g, '/')}/../">⬆️ Up</button>
+                    <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('')">💿 Drives</button>
                 </div>
                 <div class="dir-grid">
             `;
 
             folders.forEach(folder => {
+                const escapedPath = folder.path.replace(/\\/g, '/').replace(/'/g, "\\'");
                 html += `
-                    <div class="dir-item" data-action="browse" data-path="${folder.path.replace(/\\/g, '/')}">
+                    <div class="dir-item" onclick="loadAndRenderDirectory('${escapedPath}')">
                         <div class="dir-name">📁 ${folder.name}</div>
-                        <div class="dir-info">${folder.path.split('/').pop()}</div>
                     </div>
                 `;
             });
@@ -267,47 +221,14 @@
             html += '</div>';
 
             const footer = `
-                <button class="modal-btn modal-btn-secondary" data-action="close">Cancel</button>
-                <button class="modal-btn modal-btn-primary" data-action="select">Select This Folder</button>
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="selectDirectory()">Select This Folder</button>
             `;
 
             openModal('📁 Select Project Directory', html, footer);
-
-            // Attach event listeners after rendering
-            setTimeout(() => {
-                document.querySelectorAll('[data-action]').forEach(el => {
-                    el.addEventListener('click', handleDirectoryAction);
-                });
-            }, 10);
-        }
-
-        function handleDirectoryAction(e) {
-            const action = e.currentTarget.dataset.action;
-            const path = e.currentTarget.dataset.path;
-
-            console.log('Directory action:', action, path);
-
-            switch(action) {
-                case 'close':
-                    closeModal();
-                    break;
-                case 'select':
-                    selectDirectory();
-                    break;
-                case 'drives':
-                    loadAndRenderDirectory('');
-                    break;
-                case 'up':
-                    if (path) loadAndRenderDirectory(path);
-                    break;
-                case 'browse':
-                    if (path) loadAndRenderDirectory(path);
-                    break;
-            }
         }
 
         function selectDirectory() {
-            console.log('selectDirectory called, selectedDirectory:', selectedDirectory);
             if (!selectedDirectory) return;
             showProfileSelection();
         }
@@ -326,31 +247,26 @@
             });
             html += '</div>';
 
+            const escapedDir = selectedDirectory.replace(/\\/g, '/').replace(/'/g, "\\'");
             const footer = `
-                <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('${selectedDirectory.replace(/\\/g, '/')}')">⬅️ Back</button>
+                <button class="modal-btn modal-btn-secondary" onclick="loadAndRenderDirectory('${escapedDir}')">⬅️ Back</button>
                 <button class="modal-btn modal-btn-primary" onclick="confirmSelection()">Confirm</button>
             `;
             openModal('🎯 Select AI Profile', html, footer);
         }
 
         function selectProfile(profileId) {
-            console.log('selectProfile:', profileId);
             selectedProfile = profileId;
             document.querySelectorAll('.profile-item').forEach(el => el.classList.remove('selected'));
             document.getElementById('profile-' + profileId).classList.add('selected');
         }
 
         function confirmSelection() {
-            console.log('confirmSelection', selectedDirectory, selectedProfile, pendingSessionId);
             if (!selectedDirectory || !selectedProfile) {
                 alert('Please select both directory and profile');
                 return;
             }
-
-            // Spawn FIRST, then close modal (to avoid variables being reset)
             spawnTerminalWithConfig(selectedDirectory, selectedProfile, pendingSessionId);
-
-            // Close modal after spawning (but don't reset variables anymore)
             document.getElementById('modal').classList.remove('active');
         }
 
@@ -363,19 +279,11 @@
 
         // Resume session flow
         async function resumeSession(sessionId) {
-            console.log('resumeSession called:', sessionId);
             pendingSessionId = sessionId;
-
-            // Find session data to get cwd/project
             const response = await fetch('/api/history');
             const sessions = await response.json();
             const session = sessions.find(s => s.sessionId === sessionId);
-
-            console.log('Session data:', session);
-
-            // Use cwd if available, otherwise fall back to project
             const directory = session?.cwd || session?.project;
-            console.log('Using directory:', directory);
 
             if (directory && directory !== 'N/A') {
                 selectedDirectory = directory;
@@ -387,25 +295,23 @@
 
         // Spawn terminal
         function spawnTerminalWithConfig(cwd, profileId, sessionId = null) {
-            console.log('spawnTerminalWithConfig:', { cwd, profileId, sessionId });
-
             if (!socket || !socket.connected) {
                 alert('Not connected to server');
                 return;
             }
 
             const profile = PROFILES.find(p => p.id === profileId);
-            if (!profile) {
-                console.error('Profile not found:', profileId);
-                return;
-            }
+            if (!profile) return;
 
             const options = {
                 cols: term.cols,
                 rows: term.rows,
-                cwd: cwd,
-                ccsCommand: profile.command
+                cwd: cwd
             };
+
+            if (profile.command) {
+                options.ccsCommand = profile.command;
+            }
 
             if (sessionId) {
                 options.resumeSessionId = sessionId;
@@ -414,7 +320,6 @@
                 document.getElementById('currentSession').textContent = `New - ${profile.name}`;
             }
 
-            console.log('Emitting spawn:', options);
             term.clear();
             socket.emit('spawn', options);
         }
@@ -428,8 +333,7 @@
             } else {
                 term.selectAll();
                 setTimeout(() => {
-                    const allText = term.getSelection();
-                    navigator.clipboard.writeText(allText);
+                    navigator.clipboard.writeText(term.getSelection());
                     term.clearSelection();
                 }, 100);
             }

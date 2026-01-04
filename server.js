@@ -20,6 +20,7 @@ const getClaudeHistoryPath = () => {
     // Check multiple possible locations for Claude history
     const possiblePaths = [
         process.env.CLAUDE_HISTORY_PATH, // Custom env var
+        'C:\\Users\\15931 - Backend\\.claude\\history.jsonl', // Hardcoded user path
         path.join(homeDir, '.claude', 'history.jsonl'), // Default Linux/Mac
         path.join(homeDir, 'AppData', 'Local', 'Claude', 'history.jsonl'), // Windows AppData
         path.join(homeDir, '.config', 'Claude', 'history.jsonl'), // Alternative config
@@ -38,33 +39,26 @@ const getClaudeHistoryPath = () => {
 
 const CLAUDE_HISTORY_PATH = getClaudeHistoryPath();
 
-// Find git-bash path on Windows
-const getGitBashPath = () => {
+// Get shell for Windows
+const getShell = () => {
     if (os.platform() !== 'win32') return 'bash';
 
-    const possiblePaths = [
-        process.env.CLAUDE_CODE_GIT_BASH_PATH,
-        'C:\\Users\\15931 - Backend\\AppData\\Local\\Programs\\Git\\usr\\bin\\bash.exe',
-        'C:\\Program Files\\Git\\bin\\bash.exe',
-        'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
-        'C:\\Program Files\\Git\\bin\\bash.exe'
-    ];
-
-    for (const path of possiblePaths) {
-        if (path && fs.existsSync(path)) {
-            return path;
-        }
-    }
-
-    return 'powershell.exe'; // Fallback
+    // Use PowerShell for better compatibility with npm global commands
+    return 'powershell.exe';
 };
 
-const SHELL = getGitBashPath();
+const SHELL = getShell();
 
-// Set environment for Claude Code
+// Set environment for Claude Code - use actual user profile, not Administrator
+const ACTUAL_USER_HOME = 'C:\\Users\\15931 - Backend';
+const GIT_PATH = 'C:\\Users\\15931 - Backend\\AppData\\Local\\Programs\\Git';
 const CLAUDE_ENV = {
     ...process.env,
-    CLAUDE_CODE_GIT_BASH_PATH: SHELL
+    HOME: ACTUAL_USER_HOME,
+    USERPROFILE: ACTUAL_USER_HOME,
+    HOMEPATH: '\\Users\\15931 - Backend',
+    CLAUDE_CODE_GIT_BASH_PATH: `${GIT_PATH}\\bin\\bash.exe`,
+    PATH: `${GIT_PATH}\\bin;${GIT_PATH}\\usr\\bin;${process.env.PATH || ''}`
 };
 
 app.use(express.static('public'));
