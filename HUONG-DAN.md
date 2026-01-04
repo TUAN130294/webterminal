@@ -1,18 +1,35 @@
 # Web Terminal - Hướng Dẫn Sử Dụng
 
-## 🚀 Cài Đặt Siêu Nhanh (Khuyến Nghị)
+## 🚀 1 CLICK SETUP - SIÊU ĐỠN GIẢN!
 
 ### Bước 1: Chuẩn Bị
 - Tải và cài Node.js từ: https://nodejs.org
-- Đảm bảo có quyền Administrator
 
-### Bước 2: Cài Đặt
-1. **Chuột phải** vào file `INSTALL.bat`
-2. Chọn **"Run as Administrator"**
-3. Nhấn `y` và chờ hoàn tất
-4. Truy cập: http://localhost:9000
+### Bước 2: 1 Click Setup
+1. **Double-click** vào `WEB-TERMINAL.bat`
+2. Chọn **[1]** - Cài đặt và khởi động
+3. Truy cập: http://localhost:9000
 
-**Xong! Chỉ 2 bước! 🎉**
+**Xong! Chỉ 1 click! 🎉**
+
+---
+
+## 🛠️ Web Terminal Manager
+
+Chạy `WEB-TERMINAL.bat` để quản lý:
+
+| Tùy chọn | Chức năng |
+|----------|-----------|
+| **[1]** | 🚀 **1 Click Setup** - Cài đặt hoàn toàn tự động |
+| **[2]** | ▶️ Khởi động Web Terminal |
+| **[3]** | ⏹️ Dừng Web Terminal |
+| **[4]** | 🔄 Khởi động lại |
+| **[5]** | 📊 Xem trạng thái chi tiết |
+| **[6]** | 📝 Xem logs |
+| **[7]** | 🛠️ Cài Windows Service (tự chạy khi khởi động) |
+| **[8]** | ❌ Gỡ Windows Service |
+| **[9]** | 🧹 Dọn dẹp hoàn toàn (khi có lỗi) |
+| **[10]** | 🔧 Khắc phục sự cố |
 
 ---
 
@@ -23,89 +40,55 @@
    - Gõ: `ipconfig`
    - Tìm "IPv4 Address" (ví dụ: 192.168.1.100)
 
-2. **Truy cập từ điện thoại:**
+2. **Trên điện thoại:**
    - Kết nối cùng WiFi với máy tính
-   - Mở trình duyệt trên điện thoại
-   - Vào: `http://192.168.1.100:9000`
+   - Mở trình duyệt: `http://192.168.1.100:9000`
 
 ---
 
-## 🛠️ Các Script Hỗ Trợ
+## 💡 Cách Sử Dụng Web Terminal
 
-| File | Mục đích | Khi nào dùng |
-|------|----------|---------------|
-| `INSTALL.bat` | **Cài đặt chính** | Lần đầu cài đặt |
-| `pm2-manager.bat` | Quản lý chi tiết | Khi cần quản lý/debug |
-| `force-cleanup.bat` | Dọn dẹp mạnh | Khi có lỗi nghiêm trọng |
-| `test-setup.bat` | Test nhanh | Kiểm tra hoạt động |
+1. **Truy cập**: http://localhost:9000
+2. **Tạo Terminal**: Nhấn **"+ New Terminal"** (nút màu xanh)
+3. **Chọn thư mục**: Hoặc để mặc định
+4. **Nhấn**: **"Create Terminal"**
+5. **Sử dụng**: Gõ lệnh như terminal bình thường!
 
----
-
-## 🔧 Quản Lý Đơn Giản
-
-### Lệnh PM2 Cơ Bản
-```bash
-pm2 list                    # Xem trạng thái
-pm2 stop web-terminal       # Dừng
-pm2 start web-terminal      # Khởi động
-pm2 restart web-terminal    # Khởi động lại
-pm2 logs web-terminal       # Xem logs
-```
-
-### PM2 Manager (Giao diện menu)
-- Chạy `pm2-manager.bat` as Administrator
-- **[1]** Khởi động
-- **[2]** Dừng  
-- **[4]** Xem trạng thái
-- **[5]** Xem logs
-- **[11]** Dọn dẹp hoàn toàn
+Ví dụ lệnh:
+- `dir` - Xem files/folders
+- `cd folder_name` - Vào thư mục
+- `cls` - Xóa màn hình
+- `ipconfig` - Xem IP máy tính
 
 ---
 
-## ❌ Khắc Phục Sự Cố
+## ❌ Khắc Phục Lỗi
 
-### Lỗi thường gặp:
+### 🔴 Bất kỳ lỗi nào
+1. Chạy `WEB-TERMINAL-MANAGER.bat` as Administrator
+2. Chọn **[9]** - Dọn dẹp hoàn toàn
+3. Chọn **[1]** - 1 Click Setup lại
+4. Nếu vẫn lỗi → Restart máy tính
 
-#### 🔴 "Port 9000 đã được sử dụng"
-```bash
-# Giải pháp 1: Dọn dẹp nhanh
-pm2 kill
-taskkill /F /IM node.exe
+### 🔴 "No sessions found"
+1. Nhấn **"+ New Terminal"**
+2. Nhấn **"Create Terminal"**
 
-# Giải pháp 2: Dọn dẹp mạnh
-# Chạy force-cleanup.bat
-```
-
-#### 🔴 "PM2 không hoạt động"
-```bash
-# Cài lại PM2
-npm install -g pm2 pm2-windows-startup
-```
-
-#### 🔴 "Không truy cập được từ điện thoại"
+### 🔴 Không truy cập được từ điện thoại
 1. Kiểm tra cùng mạng WiFi
 2. Tắt Windows Firewall tạm thời
-3. Kiểm tra IP đúng chưa: `ipconfig`
+3. Kiểm tra IP đúng: `ipconfig`
 
-#### 🔴 "Service crash liên tục"
-1. Chạy `force-cleanup.bat`
-2. Restart máy tính
-3. Chạy lại `INSTALL.bat`
-
-### Quy trình khắc phục tổng quát:
-```
-1. Chạy force-cleanup.bat
-2. Restart máy tính (nếu cần)
-3. Chạy INSTALL.bat
-4. Nếu vẫn lỗi → cài lại Node.js
-```
+### 🔴 Khi tắt terminal thì mất kết nối
+- Chạy `WEB-TERMINAL-MANAGER.bat` → **[7]** để cài Windows Service
+- Sau đó Web Terminal sẽ chạy nền, không cần giữ cửa sổ mở
 
 ---
 
 ## 🌐 Chia Sẻ Với Bạn Bè
 
 ### 🏠 Mạng LAN (Khuyến nghị)
-1. Cài đặt bằng `INSTALL.bat`
+1. Cài Windows Service: **[7]** trong Manager
 2. Tìm IP: `ipconfig`
 3. Chia sẻ: `http://[IP]:9000`
 
@@ -114,10 +97,16 @@ npm install -g pm2 pm2-windows-startup
 2. Chạy: `ngrok http 9000`
 3. Chia sẻ URL ngrok
 
-### 📱 Hotspot
-1. Bật hotspot trên máy tính
-2. Bạn bè kết nối hotspot
-3. Truy cập: `http://192.168.137.1:9000`
+---
+
+## 📁 Files Quan Trọng (Đã Dọn Dẹp)
+
+| File | Mục đích |
+|------|----------|
+| `WEB-TERMINAL-MANAGER.bat` | **🚀 APP QUẢN LÝ CHÍNH** |
+| `force-cleanup.bat` | Dọn dẹp khẩn cấp |
+| `server.js` | Server chính |
+| `ecosystem.config.js` | Config PM2 |
 
 ---
 
@@ -125,25 +114,9 @@ npm install -g pm2 pm2-windows-startup
 - Chỉ chia sẻ với người tin tưởng
 - Không expose ra Internet công cộng
 - Sử dụng VPN khi cần thiết
-- Có thể đổi port trong PM2 Manager → [9]
 
 ---
 
-## 🆘 Hỗ Trợ Khẩn Cấp
-
-### Khi mọi thứ đều thất bại:
-1. Gỡ cài đặt Node.js hoàn toàn
-2. Restart máy tính
-3. Cài lại Node.js từ nodejs.org
-4. Chạy `INSTALL.bat`
-
-### Liên hệ hỗ trợ:
-- Chạy `pm2 logs web-terminal` để lấy logs
-- Chụp màn hình lỗi
-- Mô tả các bước đã thực hiện
-
----
-
-**🎯 Mục tiêu: Bạn bè chỉ cần chạy `INSTALL.bat` là xong!**
+**🎯 Nhớ: Chỉ cần 1 click! `WEB-TERMINAL-MANAGER.bat` → [1] → Xong!**
 
 **Chúc bạn sử dụng vui vẻ! 🚀**

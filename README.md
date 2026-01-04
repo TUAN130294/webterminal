@@ -8,15 +8,23 @@ Web Terminal cho phép bạn sử dụng terminal/command line qua trình duyệ
 - ✅ Truy cập từ điện thoại/tablet
 - ✅ Chia sẻ qua mạng LAN
 - ✅ File explorer tích hợp
-- ✅ Hỗ trợ Windows (Git Bash/PowerShell)
+- ✅ Tự động chạy khi Windows khởi động
+- ✅ Tự động restart nếu crash
 
-## 🚀 Cài Đặt Nhanh
+## 🚀 Cài Đặt Siêu Nhanh - 1 CLICK!
 
 ### Yêu Cầu
 - [Node.js](https://nodejs.org) (v18+)
 - Windows với quyền Administrator
 
-### Cách 1: Chạy Trực Tiếp (Đơn Giản Nhất)
+### 1 Click Setup (Khuyến Nghị)
+1. **Double-click** vào `WEB-TERMINAL.bat`
+2. Chọn **[1]** - Cài đặt và khởi động
+3. Truy cập: http://localhost:9000
+
+**Xong! Chỉ 1 file duy nhất! 🎉**
+
+### Cách Thủ Công (Nếu Cần)
 ```bash
 # 1. Clone repo
 git clone https://github.com/TUAN130294/webterminal.git
@@ -25,27 +33,17 @@ cd webterminal
 # 2. Cài dependencies
 npm install
 
-# 3. Chạy server
-node server.js
+# 3. Cài PM2
+npm install -g pm2 pm2-windows-startup
 
-# 4. Mở trình duyệt: http://localhost:9000
-```
-
-### Cách 2: Dùng Script (Windows)
-1. **Chuột phải** vào `START-DIRECT.bat`
-2. Chọn **"Run as Administrator"**
-3. Truy cập: http://localhost:9000
-
-### Cách 3: Dùng PM2 (Chạy Nền)
-```bash
-# Cài PM2
-npm install -g pm2
-
-# Chạy với PM2
+# 4. Chạy với PM2
 pm2 start ecosystem.config.js
 
-# Xem trạng thái
-pm2 list
+# 5. Cài Windows Service
+pm2-startup install
+pm2 save
+
+# 6. Truy cập: http://localhost:9000
 ```
 
 ## 📱 Truy Cập Từ Điện Thoại
@@ -60,57 +58,64 @@ pm2 list
    - Kết nối cùng WiFi với máy tính
    - Mở trình duyệt: `http://192.168.1.100:9000`
 
-## 🛠️ Các Script Hỗ Trợ (Windows)
+## 🛠️ Quản Lý
 
-| File | Mục đích |
-|------|----------|
-| `START-DIRECT.bat` | **Chạy trực tiếp (khuyến nghị)** |
-| `pm2-manager.bat` | Quản lý PM2 chi tiết |
-| `force-cleanup.bat` | Dọn dẹp khi có lỗi |
+### Web Terminal Manager (Khuyến Nghị)
+Chạy `WEB-TERMINAL.bat`:
+- **[1]** 🚀 Cài đặt và khởi động (1 Click)
+- **[2]** ▶️ Khởi động
+- **[3]** ⏹️ Dừng
+- **[4]** 🔄 Khởi động lại
+- **[5]** 📊 Xem trạng thái
+- **[6]** 📝 Xem logs
+- **[7]** 🛠️ Cài Windows Service
+- **[9]** 🧹 Dọn dẹp hoàn toàn
 
-## 📁 Cấu Trúc Project
+### Lệnh PM2 Cơ Bản
+```bash
+pm2 list                    # Xem trạng thái
+pm2 stop web-terminal       # Dừng
+pm2 start web-terminal      # Khởi động
+pm2 restart web-terminal    # Khởi động lại
+pm2 logs web-terminal       # Xem logs
+```
+
+## 📁 Cấu Trúc Project (Đã Dọn Dẹp)
 
 ```
 webterminal/
-├── server.js           # Server chính
-├── ecosystem.config.js # Config PM2
-├── package.json        # Dependencies
-├── public/
-│   └── index.html      # Giao diện web
-├── logs/               # Thư mục logs
-├── START-DIRECT.bat    # Script chạy trực tiếp
-├── pm2-manager.bat     # Script quản lý PM2
-└── HUONG-DAN.md        # Hướng dẫn tiếng Việt
+├── server.js                      # Server chính
+├── ecosystem.config.js            # Config PM2
+├── package.json                   # Dependencies
+├── public/index.html              # Giao diện web
+├── logs/                          # Thư mục logs
+├── WEB-TERMINAL.bat               # 🚀 FILE DUY NHẤT CẦN DÙNG
+└── README.md                      # Hướng dẫn này
 ```
 
-## ⚙️ Cấu Hình
+## 💡 Cách Sử Dụng Web Terminal
 
-### Đổi Port
-Mặc định port 9000. Để đổi:
-```bash
-# Cách 1: Environment variable
-PORT=8080 node server.js
-
-# Cách 2: Sửa ecosystem.config.js
-env: {
-    PORT: 8080
-}
-```
+1. **Truy cập**: http://localhost:9000
+2. **Tạo Terminal**: Nhấn **"+ New Terminal"** (nút xanh)
+3. **Chọn thư mục**: Hoặc để mặc định
+4. **Nhấn**: **"Create Terminal"**
+5. **Sử dụng**: Gõ lệnh như terminal bình thường!
 
 ## ❌ Khắc Phục Sự Cố
 
-### Lỗi "Port 9000 đã được sử dụng"
-```bash
-# Windows
-taskkill /F /IM node.exe
+### "No sessions found"
+1. Nhấn **"+ New Terminal"**
+2. Chọn **"Create Terminal"**
 
-# Hoặc chạy force-cleanup.bat
-```
+### Lỗi bất kỳ
+1. Chạy `WEB-TERMINAL-MANAGER.bat` as Administrator
+2. Chọn **[9]** - Dọn dẹp hoàn toàn
+3. Chọn **[1]** - 1 Click Setup lại
 
 ### Không truy cập được từ điện thoại
 1. Kiểm tra cùng mạng WiFi
 2. Tắt Windows Firewall tạm thời
-3. Kiểm tra IP đúng chưa
+3. Kiểm tra IP đúng chưa: `ipconfig`
 
 ## ⚠️ Lưu Ý Bảo Mật
 
@@ -123,5 +128,7 @@ taskkill /F /IM node.exe
 MIT License
 
 ---
+
+**🎯 Mục tiêu: 1 Click là xong! Chạy `WEB-TERMINAL.bat` → [1] → Xong!**
 
 **Chúc bạn sử dụng vui vẻ! 🚀**
