@@ -32,16 +32,17 @@ goto MENU
 cls
 echo === CAI DAT VA KHOI DONG ===
 echo.
-echo [1/4] Kiem tra Node.js...
+echo [1/5] Kiem tra Node.js...
 call node --version
 if %errorlevel% neq 0 (
     echo [X] Node.js chua cai!
+    echo Tai tai: https://nodejs.org/
     pause
     goto MENU
 )
 echo.
 
-echo [2/4] Kiem tra PM2...
+echo [2/5] Kiem tra PM2...
 call pm2 --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo Dang cai PM2...
@@ -50,12 +51,26 @@ if %errorlevel% neq 0 (
 echo [OK] PM2 OK
 echo.
 
-echo [3/4] Khoi dong Web Terminal...
+echo [3/5] Cai dat dependencies...
+if not exist "node_modules" (
+    echo Dang cai npm packages...
+    call npm install
+    if %errorlevel% neq 0 (
+        echo [X] Loi cai dat npm packages!
+        pause
+        goto MENU
+    )
+) else (
+    echo [OK] Dependencies da cai san
+)
+echo.
+
+echo [4/5] Khoi dong Web Terminal...
 call pm2 delete web-terminal >nul 2>&1
 call pm2 start ecosystem.config.js
 echo.
 
-echo [4/4] Mo trinh duyet...
+echo [5/5] Mo trinh duyet...
 timeout /t 2 >nul
 start http://localhost:9000
 echo.
