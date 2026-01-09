@@ -150,9 +150,51 @@ echo ===================================
 echo   SHARE TERMINAL TO MOBILE
 echo ===================================
 echo.
-echo Dang mo Share Manager...
+
+echo [1/3] Kiem tra server...
+call pm2 describe web-terminal >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Server chua chay. Dang khoi dong...
+    echo.
+
+    echo Kiem tra dependencies...
+    if not exist "node_modules" (
+        echo Dang cai npm packages...
+        call npm install
+        if %errorlevel% neq 0 (
+            echo [X] Loi cai dat npm packages!
+            pause
+            goto MENU
+        )
+    )
+    echo [OK] Dependencies OK
+    echo.
+
+    echo Khoi dong server...
+    call pm2 start ecosystem.config.js
+    timeout /t 2 >nul
+) else (
+    REM Check if online
+    for /f "tokens=*" %%i in ('pm2 jlist 2^>nul ^| findstr /C:"online"') do set PM2_ONLINE=1
+    if not defined PM2_ONLINE (
+        echo Server dang loi. Khoi dong lai...
+        if not exist "node_modules" (
+            call npm install
+        )
+        call pm2 restart web-terminal
+        timeout /t 2 >nul
+    ) else (
+        echo [OK] Server dang chay
+    )
+)
 echo.
+
+echo [2/3] Kiem tra ket noi...
 timeout /t 1 >nul
+echo [OK] Server san sang tai http://localhost:9000
+echo.
+
+echo [3/3] Mo Share Manager...
 start http://localhost:9000/share-manager.html
 echo.
 echo [OK] Da mo Share Manager trong browser!
@@ -164,6 +206,7 @@ echo   3. Quet QR code tren dien thoai
 echo   4. Terminal se mo ngay tren mobile!
 echo.
 pause
+set PM2_ONLINE=
 goto MENU
 
 :DO_EXIT
