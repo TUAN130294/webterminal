@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Terminal Manager</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 32px;
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 16px;
+        }
+
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #c9d1d9;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .terminal-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .terminal-card {
+            background: #0d1117;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .terminal-card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-2px);
+        }
+
+        .terminal-card.selected {
+            border-color: #238636;
+            background: #0d2d16;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .terminal-id {
+            font-size: 18px;
+            font-weight: 600;
+            color: #58a6ff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #238636;
+            color: white;
+        }
+
+        .terminal-info {
+            color: #8b949e;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .terminal-cwd {
+            color: #c9d1d9;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mode-option {
+            background: #0d1117;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-option:hover {
+            border-color: #58a6ff;
+        }
+
+        .mode-option.selected {
+            border-color: #238636;
+            background: #0d2d16;
+        }
+
+        .mode-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .mode-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #c9d1d9;
+            margin-bottom: 5px;
+        }
+
+        .mode-desc {
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        .share-btn {
+            width: 100%;
+            padding: 16px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .share-btn:hover {
+            background: #2ea043;
+        }
+
+        .share-btn:disabled {
+            background: #30363d;
+            color: #8b949e;
+            cursor: not-allowed;
+        }
+
+        .qr-section {
+            text-align: center;
+            display: none;
+        }
+
+        .qr-section.active {
+            display: block;
+        }
+
+        .qr-code-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .qr-code-container img {
+            display: block;
+            width: 300px;
+            height: 300px;
+        }
+
+        .share-link-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .share-link-text {
+            flex: 1;
+            color: #58a6ff;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+
+        .copy-link-btn {
+            padding: 10px 20px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .copy-link-btn:hover {
+            background: #2ea043;
+        }
+
+        .copy-link-btn.copied {
+            background: #3fb950;
+        }
+
+        .instructions {
+            background: #161b22;
+            border-left: 3px solid #58a6ff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+
+        .instructions h3 {
+            color: #58a6ff;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .instructions ol {
+            color: #8b949e;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .instructions ol li {
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            background: #30363d;
+            color: #c9d1d9;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .back-btn:hover {
+            background: #3d444d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-box {
+            background: #1a0c0c;
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 20px;
+            color: #f85149;
+            margin: 20px 0;
+        }
+
+        .info-box {
+            background: #0d1d2c;
+            border: 1px solid #58a6ff;
+            border-radius: 8px;
+            padding: 15px;
+            color: #8b949e;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .expires-info {
+            text-align: center;
+            color: #8b949e;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📱 Share Terminal Manager</h1>
+            <p class="subtitle">Chọn terminal và tạo QR code để truy cập trên mobile</p>
+        </header>
+
+        <!-- Step 1: Select Terminal -->
+        <div class="section" id="step1">
+            <div class="section-title">
+                <span>🖥️</span>
+                <span>Bước 1: Chọn Terminal</span>
+            </div>
+
+            <div class="info-box">
+                💡 Chỉ hiển thị các terminal đang chạy (active). Nếu không thấy terminal, hãy mở terminal mới trước.
+            </div>
+
+            <div id="terminalListContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Đang tải danh sách terminals...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Select Mode -->
+        <div class="section" id="step2" style="display: none;">
+            <div class="section-title">
+                <span>🔐</span>
+                <span>Bước 2: Chọn Chế Độ</span>
+            </div>
+
+            <div class="mode-selector">
+                <div class="mode-option" onclick="selectMode('readonly')">
+                    <div class="mode-icon">👁️</div>
+                    <div class="mode-title">Read-Only</div>
+                    <div class="mode-desc">Chỉ xem, không điều khiển</div>
+                </div>
+                <div class="mode-option" onclick="selectMode('full')">
+                    <div class="mode-icon">⚡</div>
+                    <div class="mode-title">Full Access</div>
+                    <div class="mode-desc">Xem và điều khiển đầy đủ</div>
+                </div>
+            </div>
+
+            <button class="share-btn" id="generateBtn" onclick="generateShareLink()" disabled>
+                📱 Tạo QR Code
+            </button>
+        </div>
+
+        <!-- Step 3: QR Code -->
+        <div class="section qr-section" id="step3">
+            <div class="section-title">
+                <span>📷</span>
+                <span>Bước 3: Quét QR Code</span>
+            </div>
+
+            <div class="instructions">
+                <h3>📱 Hướng dẫn sử dụng trên mobile:</h3>
+                <ol>
+                    <li>Mở <strong>Camera</strong> app trên điện thoại</li>
+                    <li>Hướng camera vào QR code bên dưới</li>
+                    <li>Tap vào notification xuất hiện</li>
+                    <li>Terminal sẽ mở ngay trong browser!</li>
+                </ol>
+            </div>
+
+            <div class="qr-code-container">
+                <img id="qrCodeImage" src="" alt="QR Code">
+            </div>
+
+            <div class="share-link-box">
+                <div class="share-link-text" id="shareLinkText"></div>
+                <button class="copy-link-btn" onclick="copyShareLink()">📋 Copy</button>
+            </div>
+
+            <div class="expires-info" id="expiresInfo"></div>
+
+            <button class="back-btn" onclick="resetForm()">⬅️ Tạo Link Mới</button>
+        </div>
+    </div>
+
+    <script>
+        let terminals = [];
+        let selectedTerminal = null;
+        let selectedMode = null;
+
+        // Load active terminals
+        async function loadTerminals() {
+            try {
+                const response = await fetch('/api/terminal/active');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch terminals');
+                }
+
+                terminals = await response.json();
+                displayTerminals(terminals);
+
+            } catch (error) {
+                console.error('Failed to load terminals:', error);
+                showError('Không thể tải danh sách terminals. Đảm bảo server đang chạy.');
+            }
+        }
+
+        function showEmptyState() {
+            const container = document.getElementById('terminalListContainer');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🖥️</div>
+                    <h3 style="color: #c9d1d9; margin-bottom: 10px;">Chưa có terminal nào đang chạy</h3>
+                    <p style="margin-bottom: 20px;">Vui lòng mở terminal trước khi share</p>
+                    <button onclick="window.location.href='/'" style="padding: 12px 24px; background: #238636; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        ➕ Mở Terminal Mới
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayTerminals(terminals) {
+            const container = document.getElementById('terminalListContainer');
+
+            if (terminals.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            const html = `
+                <div class="terminal-list">
+                    ${terminals.map(t => `
+                        <div class="terminal-card" onclick="selectTerminal('${t.socketId}')">
+                            <div class="terminal-header">
+                                <div class="terminal-id">${t.sessionId}</div>
+                                <div class="status-badge">● ACTIVE</div>
+                            </div>
+                            <div class="terminal-info">
+                                Socket: ${t.socketId}<br>
+                                Started: ${new Date(t.createdAt).toLocaleString()}
+                            </div>
+                            <div class="terminal-cwd">📁 ${t.cwd}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('terminalListContainer');
+            container.innerHTML = `
+                <div class="error-box">
+                    ❌ ${message}
+                </div>
+            `;
+        }
+
+        function selectTerminal(socketId) {
+            selectedTerminal = terminals.find(t => t.socketId === socketId);
+
+            // Update UI
+            document.querySelectorAll('.terminal-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Show step 2
+            document.getElementById('step2').style.display = 'block';
+            document.getElementById('step2').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectMode(mode) {
+            selectedMode = mode;
+
+            // Update UI
+            document.querySelectorAll('.mode-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Enable generate button
+            document.getElementById('generateBtn').disabled = false;
+        }
+
+        async function generateShareLink() {
+            if (!selectedTerminal || !selectedMode) {
+                alert('Vui lòng chọn terminal và mode');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang tạo...';
+
+            try {
+                const response = await fetch('/api/terminal/share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedTerminal.sessionId,
+                        socketId: selectedTerminal.socketId,
+                        readOnly: selectedMode === 'readonly'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create share link');
+                }
+
+                const data = await response.json();
+                displayQRCode(data);
+
+            } catch (error) {
+                console.error('Share error:', error);
+                alert('Lỗi: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = '📱 Tạo QR Code';
+            }
+        }
+
+        function displayQRCode(data) {
+            // Hide steps 1 & 2
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'none';
+
+            // Show step 3
+            document.getElementById('step3').classList.add('active');
+            document.getElementById('step3').scrollIntoView({ behavior: 'smooth' });
+
+            // Set QR code
+            document.getElementById('qrCodeImage').src = data.qrCode;
+
+            // Set link
+            document.getElementById('shareLinkText').textContent = data.link;
+
+            // Set expires info
+            const expiresDate = new Date(data.expires);
+            const expiresIn = Math.round((expiresDate - new Date()) / 60000);
+            document.getElementById('expiresInfo').textContent = `⏰ Link hết hạn sau ${expiresIn} phút`;
+        }
+
+        function copyShareLink() {
+            const linkText = document.getElementById('shareLinkText').textContent;
+            navigator.clipboard.writeText(linkText).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                alert('Không thể copy link');
+            });
+        }
+
+        function resetForm() {
+            selectedTerminal = null;
+            selectedMode = null;
+
+            document.getElementById('step1').style.display = 'block';
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('generateBtn').textContent = '📱 Tạo QR Code';
+
+            loadTerminals();
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTerminals();
+        });
+    </script>
+</body>
+</html>

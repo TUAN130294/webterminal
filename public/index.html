@@ -65,6 +65,30 @@
         .profile-item.selected { border-color: #238636; background: #0d2d16; }
         .profile-icon { font-size: 24px; margin-bottom: 8px; }
         .profile-name { color: #c9d1d9; font-size: 14px; font-weight: 500; }
+
+        /* Share Dialog */
+        .share-content { text-align: center; }
+        .qr-container { background: white; padding: 20px; border-radius: 8px; display: inline-block; margin: 20px 0; }
+        .qr-container img { display: block; width: 250px; height: 250px; }
+        .share-link-container { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin: 15px 0; display: flex; gap: 10px; align-items: center; }
+        .share-link { flex: 1; color: #58a6ff; font-size: 13px; word-break: break-all; text-align: left; }
+        .copy-btn { padding: 8px 16px; background: #238636; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+        .copy-btn:hover { background: #2ea043; }
+        .copy-btn.copied { background: #3fb950; }
+        .share-options { margin: 15px 0; text-align: left; }
+        .share-options label { color: #c9d1d9; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .share-info { color: #8b949e; font-size: 12px; margin-top: 10px; }
+        .share-instructions { background: #161b22; border-left: 3px solid #58a6ff; padding: 12px; margin: 15px 0; text-align: left; }
+        .share-instructions h4 { color: #58a6ff; margin: 0 0 8px 0; font-size: 14px; }
+        .share-instructions ol { margin: 0; padding-left: 20px; color: #8b949e; font-size: 13px; line-height: 1.6; }
+        .active-shares { margin-top: 20px; text-align: left; }
+        .active-shares h4 { color: #c9d1d9; font-size: 14px; margin-bottom: 10px; }
+        .share-item { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
+        .share-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .share-token { color: #58a6ff; font-family: monospace; }
+        .share-meta { color: #8b949e; }
+        .revoke-btn { padding: 4px 8px; background: #f85149; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .revoke-btn:hover { background: #da3633; }
     </style>
 </head>
 <body>
@@ -85,6 +109,7 @@
                 <span class="status-dot status-offline" id="statusDot"></span>
                 <span id="status">Connecting...</span>
                 <span style="margin-left: auto; color: #58a6ff;" id="currentSession"></span>
+                <button onclick="shareTerminal()">📱 Share</button>
                 <button onclick="copyTerminal()">📄 Copy</button>
                 <button onclick="openNewTerminalModal()">➕ New</button>
             </div>
@@ -119,6 +144,8 @@
         let selectedDirectory = null;
         let selectedProfile = null;
         let pendingSessionId = null;
+        let currentSessionId = null;
+        let currentSocketId = null;
 
         // Profiles
         const PROFILES = [
@@ -169,6 +196,12 @@
 
             socket.on('output', (data) => { if (term) term.write(data); });
             socket.on('connect_error', (error) => console.error('Socket error:', error));
+
+            socket.on('session-info', (data) => {
+                currentSessionId = data.sessionId;
+                currentSocketId = data.socketId;
+                console.log('Session info received:', data);
+            });
         }
 
         // Modal functions
@@ -380,6 +413,147 @@
             localStorage.setItem('sidebarHidden', isHidden);
             // Refit terminal after animation
             setTimeout(() => fitAddon.fit(), 350);
+        }
+
+        // Share Terminal
+        async function shareTerminal() {
+            if (!currentSessionId || !currentSocketId) {
+                alert('No active terminal session to share');
+                return;
+            }
+
+            const readOnly = confirm('Share as Read-Only?\n\nOK = Read-Only (view only)\nCancel = Full Access (can type commands)');
+
+            try {
+                const response = await fetch('/api/terminal/share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: currentSessionId,
+                        socketId: currentSocketId,
+                        readOnly: readOnly
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create share link');
+                }
+
+                const data = await response.json();
+                showShareDialog(data);
+            } catch (error) {
+                console.error('Share error:', error);
+                alert('Failed to create share link: ' + error.message);
+            }
+        }
+
+        function showShareDialog(shareData) {
+            const expiresDate = new Date(shareData.expires);
+            const expiresIn = Math.round((expiresDate - new Date()) / 60000); // minutes
+
+            const html = `
+                <div class="share-content">
+                    <div class="share-instructions">
+                        <h4>📱 How to access on mobile:</h4>
+                        <ol>
+                            <li>Open camera app on your phone</li>
+                            <li>Point at the QR code below</li>
+                            <li>Tap the notification to open</li>
+                        </ol>
+                    </div>
+
+                    <div class="qr-container">
+                        <img src="${shareData.qrCode}" alt="QR Code">
+                    </div>
+
+                    <div class="share-link-container">
+                        <div class="share-link" id="shareLinkText">${shareData.link}</div>
+                        <button class="copy-btn" onclick="copyShareLink()">📋 Copy</button>
+                    </div>
+
+                    <div class="share-info">
+                        ⏰ Link expires in ${expiresIn} minutes
+                    </div>
+
+                    <div class="active-shares" id="activeSharesList">
+                        <h4>Active Share Links:</h4>
+                        <div id="sharesContainer">Loading...</div>
+                    </div>
+                </div>
+            `;
+
+            const footer = `
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Close</button>
+            `;
+
+            openModal('📱 Share Terminal', html, footer);
+            loadActiveShares();
+        }
+
+        async function loadActiveShares() {
+            try {
+                const response = await fetch('/api/terminal/active-shares');
+                const shares = await response.json();
+
+                const container = document.getElementById('sharesContainer');
+                if (shares.length === 0) {
+                    container.innerHTML = '<div style="color: #8b949e; font-size: 12px;">No active shares</div>';
+                    return;
+                }
+
+                container.innerHTML = shares.map(share => `
+                    <div class="share-item">
+                        <div class="share-item-header">
+                            <span class="share-token">${share.token}</span>
+                            <button class="revoke-btn" onclick="revokeShare('${share.token}')">Revoke</button>
+                        </div>
+                        <div class="share-meta">
+                            Session: ${share.sessionId} | Created: ${share.created}
+                            ${share.readOnly ? ' | 🔒 Read-Only' : ''}
+                            ${share.isActive ? ' | ✅ Active' : ' | ❌ Inactive'}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load active shares:', error);
+            }
+        }
+
+        async function revokeShare(token) {
+            // Extract full token from display (remove '...')
+            const fullToken = token.replace('...', '');
+
+            try {
+                const response = await fetch(`/api/terminal/share/${fullToken}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadActiveShares();
+                } else {
+                    alert('Failed to revoke share link');
+                }
+            } catch (error) {
+                console.error('Revoke error:', error);
+                alert('Failed to revoke share link');
+            }
+        }
+
+        function copyShareLink() {
+            const linkText = document.getElementById('shareLinkText').textContent;
+            navigator.clipboard.writeText(linkText).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                alert('Failed to copy link');
+            });
         }
 
         // Initialize

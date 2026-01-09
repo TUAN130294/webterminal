@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Mobile Terminal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            background: #0d1117;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: #161b22;
+            padding: 10px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 50px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f85149;
+        }
+
+        .status-dot.online {
+            background: #3fb950;
+        }
+
+        .session-info {
+            color: #8b949e;
+            font-size: 12px;
+        }
+
+        .session-id {
+            color: #58a6ff;
+            font-weight: 500;
+        }
+
+        .readonly-badge {
+            background: #f85149;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        #terminal {
+            flex: 1;
+            overflow: hidden;
+            padding: 5px;
+        }
+
+        .keyboard-bar {
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            padding: 8px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .key-btn {
+            flex-shrink: 0;
+            padding: 10px 14px;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .key-btn:active {
+            background: #30363d;
+            transform: scale(0.95);
+        }
+
+        .key-btn.primary {
+            background: #238636;
+            border-color: #238636;
+        }
+
+        .key-btn.primary:active {
+            background: #2ea043;
+        }
+
+        .virtual-keyboard {
+            background: #0d1117;
+            border-top: 1px solid #30363d;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .virtual-keyboard.active {
+            display: flex;
+        }
+
+        .vk-row {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .vk-key {
+            flex: 1;
+            padding: 12px;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .vk-key:active {
+            background: #30363d;
+        }
+
+        .vk-key.wide {
+            flex: 2;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b949e;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0d1117;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .error-screen.active {
+            display: flex;
+        }
+
+        .error-content {
+            color: #c9d1d9;
+        }
+
+        .error-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            color: #8b949e;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Connecting to terminal...</div>
+    </div>
+
+    <div class="error-screen" id="errorScreen">
+        <div class="error-content">
+            <div class="error-icon">❌</div>
+            <div class="error-title" id="errorTitle">Connection Failed</div>
+            <div class="error-message" id="errorMessage">Unable to connect to the terminal.</div>
+        </div>
+    </div>
+
+    <div class="container" style="display: none;" id="mainContainer">
+        <div class="header">
+            <div class="header-left">
+                <span class="status-dot" id="statusDot"></span>
+                <div class="session-info">
+                    <span class="session-id" id="sessionId">...</span>
+                    <span id="readOnlyBadge"></span>
+                </div>
+            </div>
+            <button class="key-btn" onclick="toggleVirtualKeyboard()">⌨️</button>
+        </div>
+
+        <div id="terminal"></div>
+
+        <div class="keyboard-bar">
+            <button class="key-btn" onclick="sendSpecialKey('\\x03')">Ctrl+C</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\t')">Tab</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\x1b')">Esc</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\x1b[A')">↑</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\x1b[B')">↓</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\x1b[D')">←</button>
+            <button class="key-btn" onclick="sendSpecialKey('\\x1b[C')">→</button>
+            <button class="key-btn primary" onclick="focusTerminal()">⌨️ Keyboard</button>
+        </div>
+
+        <div class="virtual-keyboard" id="virtualKeyboard">
+            <div class="vk-row">
+                <div class="vk-key" onclick="sendText('1')">1</div>
+                <div class="vk-key" onclick="sendText('2')">2</div>
+                <div class="vk-key" onclick="sendText('3')">3</div>
+                <div class="vk-key" onclick="sendText('4')">4</div>
+                <div class="vk-key" onclick="sendText('5')">5</div>
+                <div class="vk-key" onclick="sendText('6')">6</div>
+                <div class="vk-key" onclick="sendText('7')">7</div>
+                <div class="vk-key" onclick="sendText('8')">8</div>
+                <div class="vk-key" onclick="sendText('9')">9</div>
+                <div class="vk-key" onclick="sendText('0')">0</div>
+            </div>
+            <div class="vk-row">
+                <div class="vk-key" onclick="sendText('-')">-</div>
+                <div class="vk-key" onclick="sendText('_')">_</div>
+                <div class="vk-key" onclick="sendText('/')/">/</div>
+                <div class="vk-key" onclick="sendText('.')">.</div>
+                <div class="vk-key" onclick="sendText('@')">@</div>
+                <div class="vk-key" onclick="sendText('#')">#</div>
+                <div class="vk-key" onclick="sendText('$')">$</div>
+                <div class="vk-key" onclick="sendText('%')">%</div>
+            </div>
+            <div class="vk-row">
+                <div class="vk-key wide" onclick="sendSpecialKey('\\x17')">Ctrl+W</div>
+                <div class="vk-key wide" onclick="sendSpecialKey('\\x15')">Ctrl+U</div>
+                <div class="vk-key wide" onclick="sendSpecialKey('\\x0c')">Ctrl+L</div>
+                <div class="vk-key wide" onclick="toggleVirtualKeyboard()">Close</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script>
+        let socket = null;
+        let term = null;
+        let fitAddon = null;
+        let isReadOnly = false;
+
+        // Get share token from URL
+        const pathParts = window.location.pathname.split('/');
+        const shareToken = pathParts[pathParts.length - 1];
+
+        function showError(title, message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorScreen').classList.add('active');
+        }
+
+        function initTerminal() {
+            term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#0d1117',
+                    foreground: '#c9d1d9',
+                    cursor: '#58a6ff'
+                },
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                fontSize: 13,
+                lineHeight: 1.2,
+                scrollback: 1000
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById('terminal'));
+
+            // Fit with slight delay to ensure container is ready
+            setTimeout(() => {
+                fitAddon.fit();
+                if (socket && socket.connected) {
+                    socket.emit('resize', { cols: term.cols, rows: term.rows });
+                }
+            }, 100);
+
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    fitAddon.fit();
+                    if (socket && socket.connected) {
+                        socket.emit('resize', { cols: term.cols, rows: term.rows });
+                    }
+                }, 50);
+            });
+
+            term.onData((data) => {
+                if (socket && socket.connected && !isReadOnly) {
+                    socket.emit('input', data);
+                }
+            });
+        }
+
+        function connectSocket() {
+            socket = io({
+                auth: { shareToken: shareToken },
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                document.getElementById('statusDot').classList.add('online');
+            });
+
+            socket.on('connected', (data) => {
+                console.log('Terminal session connected:', data);
+                isReadOnly = data.readOnly;
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'flex';
+                document.getElementById('sessionId').textContent = data.sessionId.substring(0, 8);
+
+                if (isReadOnly) {
+                    document.getElementById('readOnlyBadge').innerHTML = '<span class="readonly-badge">READ ONLY</span>';
+                    term.write('\x1b[33m[Read-Only Mode - You can only view this terminal]\x1b[0m\r\n\r\n');
+                }
+
+                // Fit terminal after showing container
+                setTimeout(() => fitAddon.fit(), 100);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                document.getElementById('statusDot').classList.remove('online');
+            });
+
+            socket.on('output', (data) => {
+                if (term) term.write(data);
+            });
+
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                showError('Connection Error', error);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                showError('Connection Failed', 'Unable to connect to the terminal. The share link may be invalid or expired.');
+            });
+        }
+
+        function sendSpecialKey(key) {
+            if (socket && socket.connected && !isReadOnly) {
+                socket.emit('input', key);
+            }
+            if (term) term.focus();
+        }
+
+        function sendText(text) {
+            if (socket && socket.connected && !isReadOnly) {
+                socket.emit('input', text);
+            }
+            if (term) term.focus();
+        }
+
+        function focusTerminal() {
+            if (term) {
+                term.focus();
+                // Trigger mobile keyboard
+                term.textarea.focus();
+            }
+        }
+
+        function toggleVirtualKeyboard() {
+            document.getElementById('virtualKeyboard').classList.toggle('active');
+            setTimeout(() => {
+                fitAddon.fit();
+            }, 300);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initTerminal();
+            connectSocket();
+        });
+
+        // Prevent pull-to-refresh on mobile
+        document.body.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) return;
+            e.preventDefault();
+        }, { passive: false });
+
+        // Handle orientation change
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                fitAddon.fit();
+                if (socket && socket.connected) {
+                    socket.emit('resize', { cols: term.cols, rows: term.rows });
+                }
+            }, 200);
+        });
+    </script>
+</body>
+</html>
