@@ -205,6 +205,22 @@ app.post('/api/terminal/share', (req, res) => {
     });
 });
 
+// API: Get Active Terminals
+app.get('/api/terminal/active', (req, res) => {
+    const activeList = [];
+
+    for (const [socketId, data] of activeTerminals.entries()) {
+        activeList.push({
+            socketId: socketId,
+            sessionId: data.sessionId,
+            cwd: data.cwd,
+            createdAt: data.createdAt
+        });
+    }
+
+    res.json(activeList);
+});
+
 // API: Get Active Share Links
 app.get('/api/terminal/active-shares', (req, res) => {
     const now = Date.now();

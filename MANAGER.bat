@@ -13,11 +13,13 @@ echo   4. Khoi dong lai
 echo   5. Xem trang thai
 echo   6. Xem logs
 echo   7. Cai Windows Service
+echo   8. Share Terminal to Mobile
 echo   0. Thoat
 echo.
-choice /c 12345670 /n /m "Chon: "
+choice /c 123456780 /n /m "Chon: "
 
-if %errorlevel%==8 goto DO_EXIT
+if %errorlevel%==9 goto DO_EXIT
+if %errorlevel%==8 goto DO_SHARE
 if %errorlevel%==7 goto DO_SERVICE
 if %errorlevel%==6 goto DO_LOGS
 if %errorlevel%==5 goto DO_STATUS
@@ -138,6 +140,28 @@ call pm2 save
 echo.
 echo === HOAN TAT ===
 echo PM2 se tu dong chay khi Windows khoi dong.
+echo.
+pause
+goto MENU
+
+:DO_SHARE
+cls
+echo ===================================
+echo   SHARE TERMINAL TO MOBILE
+echo ===================================
+echo.
+echo Dang mo Share Manager...
+echo.
+timeout /t 1 >nul
+start http://localhost:9000/share-manager.html
+echo.
+echo [OK] Da mo Share Manager trong browser!
+echo.
+echo Huong dan:
+echo   1. Chon terminal tu danh sach
+echo   2. Chon che do: Read-Only hoac Full Access
+echo   3. Quet QR code tren dien thoai
+echo   4. Terminal se mo ngay tren mobile!
 echo.
 pause
 goto MENU
